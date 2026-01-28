@@ -9,6 +9,15 @@ export interface AnalyticsEvent {
   created_at: string
 }
 
+interface RawAnalyticsEvent {
+  id: string
+  user_id: string
+  display_name: string | null
+  event_name: string
+  event_data: string | Record<string, unknown>
+  created_at: string
+}
+
 export interface KeyMetrics {
   totalPlayers: number
   dau: number
@@ -107,7 +116,15 @@ export async function fetchAnalyticsEvents(): Promise<AnalyticsEvent[]> {
     return []
   }
 
-  return data || []
+  // Parse event_data if it's a string (Supabase stores it as text)
+  const events: AnalyticsEvent[] = (data as RawAnalyticsEvent[] || []).map(event => ({
+    ...event,
+    event_data: typeof event.event_data === 'string'
+      ? JSON.parse(event.event_data)
+      : (event.event_data || {})
+  }))
+
+  return events
 }
 
 // Process events into key metrics
