@@ -105,26 +105,35 @@ export interface RecentEvent {
 
 // Fetch all analytics events
 export async function fetchAnalyticsEvents(): Promise<AnalyticsEvent[]> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('analytics_events')
-    .select('*')
-    .order('created_at', { ascending: false })
+  try {
+    const supabase = getSupabase()
+    console.log('Fetching analytics events...')
 
-  if (error) {
-    console.error('Error fetching analytics events:', error)
+    const { data, error } = await supabase
+      .from('analytics_events')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Supabase error:', error)
+      return []
+    }
+
+    console.log('Fetched', data?.length || 0, 'events')
+
+    // Parse event_data if it's a string (Supabase stores it as text)
+    const events: AnalyticsEvent[] = (data as RawAnalyticsEvent[] || []).map(event => ({
+      ...event,
+      event_data: typeof event.event_data === 'string'
+        ? JSON.parse(event.event_data)
+        : (event.event_data || {})
+    }))
+
+    return events
+  } catch (err) {
+    console.error('Failed to fetch analytics:', err)
     return []
   }
-
-  // Parse event_data if it's a string (Supabase stores it as text)
-  const events: AnalyticsEvent[] = (data as RawAnalyticsEvent[] || []).map(event => ({
-    ...event,
-    event_data: typeof event.event_data === 'string'
-      ? JSON.parse(event.event_data)
-      : (event.event_data || {})
-  }))
-
-  return events
 }
 
 // Process events into key metrics
